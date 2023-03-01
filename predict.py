@@ -7,6 +7,8 @@ import glob
 import json
 import cv2
 import paddle
+import paddleclas
+pre_model = paddleclas.PaddleClas(model_name="text_image_orientation")
 
 
 def process(src_image_dir, save_dir):
@@ -20,6 +22,8 @@ def process(src_image_dir, save_dir):
         filename = os.path.split(image_path)[1]
         # do something
         img = cv2.imread(image_path)
+        res=pre_model.predict(input_data=image_path)
+        angle=int(next(res)[0]['label_names'][0])
         # get img infor
         h, w, c = img.shape
         # pre-process of img
@@ -29,14 +33,22 @@ def process(src_image_dir, save_dir):
         img = paddle.to_tensor(img).astype('float32')
         img = paddle.reshape(img, [1]+img.shape)
 
-        pre = model(img)
-        pre = pre[0]
+        pre=model(img)[0]
         pre[pre>1]=1
         pre[pre<0]=0
         pre = pre.tolist()
         x1, y1, x2, y2, x3, y3, x4, y4 = pre
         x1, x2, x3, x4 = [int(x*w) for x in [x1, x2, x3, x4]]
         y1, y2, y3, y4 = [int(y*h) for y in [y1, y2, y3, y4]]
+
+        if angle==90:
+            x11,y11=x1,y1
+            x22,y22=x2,y2
+            x33,y33=x3,y3
+            x1,y1=x4,y4
+            x2,y2=x11,y11
+            x3,y3=x22,y22
+            x4,y4=x33,y33
 
         xmin = min(x1,x2,x3,x4)
         xmax = max(x1,x2,x3,x4)
